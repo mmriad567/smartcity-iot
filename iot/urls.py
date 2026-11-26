@@ -5,4 +5,5 @@ app_name = 'iot'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('sensor-cards/', views.sensor_cards, name='sensor_cards'),
 ]

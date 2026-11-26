@@ -79,24 +79,63 @@ from django.urls import reverse
 
 
 class DashboardViewTest(TestCase):
-    """ড্যাশবোর্ড ভিউ-এর টেস্ট"""
+
+    def setUp(self):
+        self.node = Node.objects.create(
+            node_id='esp32-01', name='টেস্ট নোড'
+        )
+        SensorReading.objects.create(
+            node=self.node, sensor_type='tank_level', value=72
+        )
+        SensorReading.objects.create(
+            node=self.node, sensor_type='soil_moisture', value=45
+        )
 
     def test_dashboard_url_exists(self):
-        """রুট URL কাজ করে কিনা"""
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
 
     def test_dashboard_uses_correct_template(self):
-        """সঠিক টেমপ্লেট ব্যবহার হচ্ছে কিনা"""
         response = self.client.get('/')
         self.assertTemplateUsed(response, 'iot/dashboard.html')
 
-    def test_dashboard_shows_tank_level(self):
-        """ট্যাংক লেভেল পেজে দেখা যাচ্ছে কিনা"""
+    def test_dashboard_shows_latest_tank_level(self):
+        """ডেটাবেসের সর্বশেষ ট্যাংক লেভেল দেখাচ্ছে কিনা"""
         response = self.client.get('/')
         self.assertContains(response, '72%')
 
-    def test_dashboard_reverse_url(self):
-        """URL name দিয়ে ঠিকানা তৈরি হয় কিনা"""
-        url = reverse('iot:dashboard')
-        self.assertEqual(url, '/')
+    def test_dashboard_shows_latest_soil_moisture(self):
+        response = self.client.get('/')
+        self.assertContains(response, '45%')
+
+    def test_dashboard_handles_empty_database(self):
+        """ডেটাবেস খালি থাকলেও ক্র্যাশ করবে না"""
+        SensorReading.objects.all().delete()
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_latest_reading_is_used(self):
+        """পুরোনো নয়, সর্বশেষ রিডিং ব্যবহৃত হচ্ছে কিনা"""
+        SensorReading.objects.create(
+            node=self.node, sensor_type='tank_level', value=99
+        )
+        response = self.client.get('/')
+        self.assertContains(response, '99%')
+        self.assertNotContains(response, '72%')
+
+
+class SensorCardsPartialTest(TestCase):
+    """HTMX partial ভিউ-এর টেস্ট"""
+
+    def test_partial_url_returns_200(self):
+        response = self.client.get('/sensor-cards/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_partial_uses_correct_template(self):
+        response = self.client.get('/sensor-cards/')
+        self.assertTemplateUsed(response, 'iot/partials/sensor_cards.html')
+
+    def test_partial_does_not_contain_navbar(self):
+        """Partial-এ নেভবার থাকা যাবে না (শুধু কার্ড)"""
+        response = self.client.get('/sensor-cards/')
+        self.assertNotContains(response, 'Smart City IoT')
