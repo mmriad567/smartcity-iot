@@ -1,0 +1,103 @@
+{% extends 'iot/base.html' %}
+
+{% block title %}ড্যাশবোর্ড · Smart City{% endblock %}
+
+{% block content %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+    <!-- ট্যাংক লেভেল কার্ড -->
+    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div class="flex justify-between items-start mb-4">
+            <h2 class="text-sm font-medium text-slate-400">💧 পানি ট্যাংক</h2>
+            <span class="text-xs px-2 py-1 rounded bg-teal-500/20 text-teal-300">
+                {{ tank_level }}%
+            </span>
+        </div>
+        <div class="text-3xl font-bold text-teal-400">{{ tank_level }}%</div>
+        <div class="mt-4 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div class="h-full bg-teal-500" style="width: {{ tank_level }}%"></div>
+        </div>
+    </div>
+
+    <!-- মাটির আর্দ্রতা কার্ড -->
+    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div class="flex justify-between items-start mb-4">
+            <h2 class="text-sm font-medium text-slate-400">🌱 মাটির আর্দ্রতা</h2>
+            <span class="text-xs px-2 py-1 rounded
+                {% if soil_moisture < 30 %}bg-red-500/20 text-red-300
+                {% else %}bg-green-500/20 text-green-300{% endif %}">
+                {% if soil_moisture < 30 %}শুকনো{% else %}ভালো{% endif %}
+            </span>
+        </div>
+        <div class="text-3xl font-bold text-green-400">{{ soil_moisture }}%</div>
+        <div class="mt-4 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div class="h-full bg-green-500" style="width: {{ soil_moisture }}%"></div>
+        </div>
+    </div>
+
+    <!-- লাইট কার্ড -->
+    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div class="flex justify-between items-start mb-4">
+            <h2 class="text-sm font-medium text-slate-400">💡 অটো লাইট</h2>
+            <span class="text-xs px-2 py-1 rounded
+                {% if light_on %}bg-yellow-500/20 text-yellow-300
+                {% else %}bg-slate-600 text-slate-300{% endif %}">
+                {% if light_on %}ON{% else %}OFF{% endif %}
+            </span>
+        </div>
+        <div class="text-3xl font-bold {% if light_on %}text-yellow-400{% else %}text-slate-500{% endif %}">
+            {% if light_on %}জ্বলছে{% else %}নিভে আছে{% endif %}
+        </div>
+        <div class="mt-4 text-sm text-slate-400">LDR: {{ ldr_value }}</div>
+    </div>
+
+    <!-- ডাস্টবিন কার্ড -->
+    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div class="flex justify-between items-start mb-4">
+            <h2 class="text-sm font-medium text-slate-400">🗑️ ডাস্টবিন</h2>
+            <span class="text-xs px-2 py-1 rounded
+                {% if bin_level >= 80 %}bg-red-500/20 text-red-300
+                {% else %}bg-slate-600 text-slate-300{% endif %}">
+                {{ bin_level }}%
+            </span>
+        </div>
+        <div class="text-3xl font-bold
+            {% if bin_level >= 80 %}text-red-400{% else %}text-slate-300{% endif %}">
+            {{ bin_level }}%
+        </div>
+        <div class="mt-4 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div class="h-full
+                {% if bin_level >= 80 %}bg-red-500{% else %}bg-slate-500{% endif %}"
+                style="width: {{ bin_level }}%"></div>
+        </div>
+        {% if bin_level >= 80 %}
+        <p class="mt-2 text-xs text-red-400">⚠️ ডাস্টবিন ভরে গেছে!</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- পাম্প স্ট্যাটাস বার -->
+<div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-lg font-semibold mb-1">🚿 ইরিগেশন পাম্প</h2>
+            <p class="text-slate-400 text-sm">স্বয়ংক্রিয়ভাবে মাটির আর্দ্রতা অনুযায়ী নিয়ন্ত্রিত</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-sm text-slate-400">
+                {% if pump_on %}চালু{% else %}বন্ধ{% endif %}
+            </span>
+            <div class="w-12 h-6 rounded-full
+                {% if pump_on %}bg-green-500{% else %}bg-slate-600{% endif %}
+                relative">
+                <div class="w-5 h-5 bg-white rounded-full absolute top-0.5
+                    {% if pump_on %}left-6.5{% else %}left-0.5{% endif %}
+                    transition-all"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
