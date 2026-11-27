@@ -3,6 +3,7 @@ from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from .models import SensorReading, Node, DeviceControl, Alert
+from .mqtt_client import publish_command
 from .services import (
     check_alerts, get_latest_value, get_pump_state, get_light_state,
 )
@@ -80,6 +81,7 @@ def toggle_pump(request):
         return HttpResponse('Invalid action', status=400)
 
     control.save()
+    publish_command({"pump": action})
     return render(request, 'iot/partials/pump_panel.html', build_context())
 
 

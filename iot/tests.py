@@ -316,3 +316,46 @@ class AlertCooldownTest(TestCase):
         alert.refresh_from_db()
         self.assertTrue(alert.is_resolved)
         self.assertIsNotNone(alert.resolved_at)
+
+
+from unittest.mock import patch
+
+
+class TogglePumpPublishesMqttTest(TestCase):
+
+    def setUp(self):
+        self.node = Node.objects.create(
+            node_id='esp32-01', name='Test Node'
+        )
+        SensorReading.objects.create(
+            node=self.node, sensor_type='soil_moisture', value=20
+        )
+
+    @patch('iot.views.publish_command')
+    def test_toggle_pump_on_publishes_on(self, mock_pub):
+        self.client.post('/toggle-pump/', {'action': 'on'})
+        mock_pub.assert_called_once_with({'pump': 'on'})
+
+    @patch('iot.views.publish_command')
+    def test_toggle_pump_off_publishes_off(self, mock_pub):
+        self.client.post('/toggle-pump/', {'action': 'off'})
+        mock_pub.assert_called_once_with({'pump': 'off'})
+
+    @patch('iot.views.publish_command')
+    def test_toggle_pump_auto_publishes_auto(self, mock_pub):
+        self.client.post('/toggle-pump/', {'action': 'auto'})
+        mock_pub.assert_called_once_with({'pump': 'auto'})
+
+    @patch('iot.views.publish_command')
+    def test_toggle_pump_invalid_action_does_not_publish(self, mock_pub):
+        response = self.client.post('/toggle-pump/', {'action': 'garbage'})
+        self.assertEqual(response.status_code, 400)
+        mock_pub.assert_not_called()
+
+    @patch('iot.views.publish_command')
+    def test_toggle_pump_survives_mqtt_failure(self, mock_pub):
+        # Simulate MQTT broker down (publish_command swallows errors)
+        mock_pub.return_value = False
+        response = self.client.post('/toggle-pump/', {'action': 'on'})
+        # HTTP response must be 200 even if MQTT fails
+        self.assertEqual(response.status_code, 200)
