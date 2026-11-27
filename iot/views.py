@@ -1,3 +1,6 @@
+import json
+from datetime import timedelta
+
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
@@ -41,6 +44,32 @@ def build_context():
         'light_mode': control.light_mode if control else 'auto',
         'last_updated': last_reading.timestamp if last_reading else None,
         'active_alerts': Alert.objects.filter(is_resolved=False)[:5],
+    }
+
+
+def get_chart_data():
+    """Returns last 24h of tank_level and soil_moisture, downsampled to max 100 points."""
+    since = timezone.now() - timedelta(hours=24)
+
+    def fetch(sensor_type):
+        rows = list(
+            SensorReading.objects
+            .filter(sensor_type=sensor_type, timestamp__gte=since)
+            .order_by('timestamp')
+            .values_list('timestamp', 'value')[:500]
+        )
+        if len(rows) > 100:
+            step = max(1, len(rows) // 100)
+            rows = rows[::step][:100]
+        return rows
+
+    tank_rows = fetch('tank_level')
+    soil_rows = fetch('soil_moisture')
+
+    return {
+        'labels': [ts.strftime('%H:%M') for ts, _ in tank_rows],
+        'tank': [round(v, 1) for _, v in tank_rows],
+        'soil': [round(v, 1) for _, v in soil_rows],
     }
 
 
@@ -112,6 +141,12 @@ def toggle_light(request):
     control.save()
     publish_command({"light": action})
     return render(request, 'iot/partials/light_panel.html', build_context())
+
+
+def chart_panel(request):
+    context = build_context()
+    context['chart_data'] = json.dumps(get_chart_data())
+    return render(request, 'iot/partials/chart_panel.html', context)
 
 
 @require_POST

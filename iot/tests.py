@@ -444,3 +444,91 @@ class DashboardHasBothPanelsTest(TestCase):
         response = self.client.get('/')
         self.assertContains(response, 'id="pump-panel"')
         self.assertContains(response, 'id="light-panel"')
+
+
+from datetime import timedelta
+from django.utils import timezone
+
+
+class ChartDataTest(TestCase):
+
+    def setUp(self):
+        self.node = Node.objects.create(node_id='esp32-01', name='Test Node')
+
+    def test_get_chart_data_returns_expected_keys(self):
+        from .views import get_chart_data
+        data = get_chart_data()
+        self.assertIn('labels', data)
+        self.assertIn('tank', data)
+        self.assertIn('soil', data)
+
+    def test_get_chart_data_empty_when_no_readings(self):
+        from .views import get_chart_data
+        data = get_chart_data()
+        self.assertEqual(data['labels'], [])
+        self.assertEqual(data['tank'], [])
+        self.assertEqual(data['soil'], [])
+
+    def test_get_chart_data_includes_recent_readings(self):
+        from .views import get_chart_data
+        SensorReading.objects.create(node=self.node, sensor_type='tank_level', value=72.0)
+        SensorReading.objects.create(node=self.node, sensor_type='soil_moisture', value=45.0)
+        data = get_chart_data()
+        self.assertEqual(len(data['tank']), 1)
+        self.assertEqual(data['tank'][0], 72.0)
+        self.assertEqual(data['soil'][0], 45.0)
+
+    def test_get_chart_data_excludes_old_readings(self):
+        from .views import get_chart_data
+        old = SensorReading.objects.create(
+            node=self.node, sensor_type='tank_level', value=99.0
+        )
+        # Rewind 25 hours
+        SensorReading.objects.filter(pk=old.pk).update(
+            timestamp=timezone.now() - timedelta(hours=25)
+        )
+        data = get_chart_data()
+        self.assertEqual(len(data['tank']), 0)
+
+
+class ChartPanelViewTest(TestCase):
+
+    def setUp(self):
+        Node.objects.create(node_id='esp32-01', name='Test Node')
+
+    def test_chart_panel_returns_200(self):
+        response = self.client.get('/chart-panel/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_chart_panel_uses_correct_template(self):
+        response = self.client.get('/chart-panel/')
+        self.assertTemplateUsed(response, 'iot/partials/chart_panel.html')
+
+    def test_chart_panel_contains_canvas(self):
+        response = self.client.get('/chart-panel/')
+        self.assertContains(response, 'id="history-chart"')
+
+    def test_chart_panel_works_with_empty_db(self):
+        response = self.client.get('/chart-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="history-chart"')
+
+    def test_chart_panel_includes_chart_data(self):
+        node = Node.objects.get(node_id='esp32-01')
+        SensorReading.objects.create(node=node, sensor_type='tank_level', value=72.0)
+        response = self.client.get('/chart-panel/')
+        self.assertContains(response, '72.0')
+
+
+class DashboardHasChartPanelTest(TestCase):
+
+    def setUp(self):
+        Node.objects.create(node_id='esp32-01', name='Test Node')
+
+    def test_dashboard_contains_chart_panel(self):
+        response = self.client.get('/')
+        self.assertContains(response, 'id="chart-panel"')
+
+    def test_dashboard_contains_chart_canvas(self):
+        response = self.client.get('/')
+        self.assertContains(response, 'id="history-chart"')
