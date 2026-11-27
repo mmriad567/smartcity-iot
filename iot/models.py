@@ -54,3 +54,30 @@ class Alert(models.Model):
 
     def __str__(self):
         return f"[{self.severity}] {self.message}"
+    
+
+
+
+class DeviceControl(models.Model):
+    MODE_CHOICES = [
+        ('auto', 'Auto'),
+        ('manual', 'Manual'),
+    ]
+
+    node = models.OneToOneField(
+        Node,
+        on_delete=models.CASCADE,
+        related_name='control'
+    )
+    pump_on = models.BooleanField(default=False)
+    light_on = models.BooleanField(default=False)
+    pump_mode = models.CharField(
+        max_length=10, choices=MODE_CHOICES, default='auto'
+    )
+    light_mode = models.CharField(
+        max_length=10, choices=MODE_CHOICES, default='auto'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Control for {self.node.node_id}"

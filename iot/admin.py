@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Node, SensorReading, Alert
+from .models import Node, SensorReading, Alert,DeviceControl
 
 
 @admin.register(Node)
@@ -18,3 +18,8 @@ class SensorReadingAdmin(admin.ModelAdmin):
 class AlertAdmin(admin.ModelAdmin):
     list_display = ('node', 'message', 'severity', 'is_resolved', 'created_at')
     list_filter = ('severity', 'is_resolved')
+
+@admin.register(DeviceControl)
+class DeviceControlAdmin(admin.ModelAdmin):
+    list_display = ('node', 'pump_on', 'pump_mode', 'light_on', 'light_mode', 'updated_at')
+    list_filter = ('pump_mode', 'light_mode')

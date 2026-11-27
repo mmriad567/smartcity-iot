@@ -139,3 +139,123 @@ class SensorCardsPartialTest(TestCase):
         """Partial-এ নেভবার থাকা যাবে না (শুধু কার্ড)"""
         response = self.client.get('/sensor-cards/')
         self.assertNotContains(response, 'Smart City IoT')
+
+
+from .models import DeviceControl
+from django.urls import reverse
+
+
+class DeviceControlTest(TestCase):
+
+    def setUp(self):
+        self.node = Node.objects.create(
+            node_id='esp32-01', name='টেস্ট নোড'
+        )
+        # শুকনো মাটি — auto তে পাম্প ON হওয়া উচিত
+        SensorReading.objects.create(
+            node=self.node, sensor_type='soil_moisture', value=20
+        )
+
+    def test_control_created_on_first_access(self):
+        """প্রথমবার build_context() কল করলে Control তৈরি হয়"""
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(DeviceControl.objects.filter(node=self.node).exists())
+
+    def test_pump_on_in_auto_mode_when_soil_dry(self):
+        """Auto মোডে শুকনো মাটিতে পাম্প ON দেখায়"""
+        response = self.client.get('/')
+        self.assertTrue(response.context['pump_on'])
+        self.assertEqual(response.context['pump_mode'], 'auto')
+
+    def test_pump_off_in_auto_mode_when_soil_wet(self):
+        """Auto মোডে ভেজা মাটিতে পাম্প OFF দেখায়"""
+        SensorReading.objects.create(
+            node=self.node, sensor_type='soil_moisture', value=70
+        )
+        response = self.client.get('/')
+        self.assertFalse(response.context['pump_on'])
+
+    def test_manual_override_keeps_pump_on(self):
+        """Manual-এ চালু করলে শুকনো/ভেজা যাই হোক ON থাকবে"""
+        control = DeviceControl.objects.create(
+            node=self.node, pump_mode='manual', pump_on=True
+        )
+        SensorReading.objects.create(
+            node=self.node, sensor_type='soil_moisture', value=80
+        )
+        response = self.client.get('/')
+        self.assertTrue(response.context['pump_on'])
+        self.assertEqual(response.context['pump_mode'], 'manual')
+
+
+class TogglePumpTest(TestCase):
+
+    def setUp(self):
+        self.node = Node.objects.create(
+            node_id='esp32-01', name='টেস্ট নোড'
+        )
+        SensorReading.objects.create(
+            node=self.node, sensor_type='soil_moisture', value=20
+        )
+
+    def test_toggle_pump_on_sets_manual_mode(self):
+        """'on' action → pump_on=True, mode='manual'"""
+        response = self.client.post(
+            '/toggle-pump/', {'action': 'on'}
+        )
+        self.assertEqual(response.status_code, 200)
+        control = DeviceControl.objects.get(node=self.node)
+        self.assertTrue(control.pump_on)
+        self.assertEqual(control.pump_mode, 'manual')
+
+    def test_toggle_pump_off_sets_manual_mode(self):
+        response = self.client.post(
+            '/toggle-pump/', {'action': 'off'}
+        )
+        control = DeviceControl.objects.get(node=self.node)
+        self.assertFalse(control.pump_on)
+        self.assertEqual(control.pump_mode, 'manual')
+
+    def test_toggle_pump_auto_restores_auto_mode(self):
+        """'auto' action → mode='auto', সেন্সর অনুযায়ী চলবে"""
+        DeviceControl.objects.create(
+            node=self.node, pump_mode='manual', pump_on=True
+        )
+        response = self.client.post(
+            '/toggle-pump/', {'action': 'auto'}
+        )
+        control = DeviceControl.objects.get(node=self.node)
+        self.assertEqual(control.pump_mode, 'auto')
+
+    def test_invalid_action_returns_400(self):
+        response = self.client.post(
+            '/toggle-pump/', {'action': 'garbage'}
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_get_method_not_allowed(self):
+        """toggle_pump শুধু POST নেয়"""
+        response = self.client.get('/toggle-pump/')
+        self.assertEqual(response.status_code, 405)
+
+    def test_no_node_returns_404(self):
+        """নোড না থাকলে 404"""
+        Node.objects.all().delete()
+        response = self.client.post(
+            '/toggle-pump/', {'action': 'on'}
+        )
+        self.assertEqual(response.status_code, 404)
+
+
+class PumpPanelPartialTest(TestCase):
+
+    def test_pump_panel_returns_200(self):
+        Node.objects.create(node_id='esp32-01', name='নোড ১')
+        response = self.client.get('/pump-panel/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_pump_panel_uses_correct_template(self):
+        Node.objects.create(node_id='esp32-01', name='নোড ১')
+        response = self.client.get('/pump-panel/')
+        self.assertTemplateUsed(response, 'iot/partials/pump_panel.html')

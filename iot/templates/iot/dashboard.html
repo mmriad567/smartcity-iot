@@ -4,36 +4,30 @@
 
 {% block content %}
 
-<!-- HTMX: প্রতি ৫ সেকেন্ডে এই div-এর ভেতরের HTML রিফ্রেশ হবে -->
+<!-- শীর্ষে শেষ আপডেট -->
+{% if last_updated %}
+<div class="flex justify-end mb-4">
+    <span class="text-xs text-slate-500">
+        শেষ আপডেট: {{ last_updated|timesince }} আগে
+    </span>
+</div>
+{% endif %}
+
+<!-- সেন্সর কার্ড — HTMX অটো রিফ্রেশ -->
 <div id="sensor-cards"
      hx-get="{% url 'iot:sensor_cards' %}"
      hx-trigger="every 5s"
      hx-swap="innerHTML">
-
     {% include 'iot/partials/sensor_cards.html' %}
-
 </div>
 
-<!-- পাম্প স্ট্যাটাস বার (এই মুহূর্তে স্ট্যাটিক, পরে HTMX করবো) -->
-<div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
-    <div class="flex items-center justify-between">
-        <div>
-            <h2 class="text-lg font-semibold mb-1">🚿 ইরিগেশন পাম্প</h2>
-            <p class="text-slate-400 text-sm">স্বয়ংক্রিয়ভাবে মাটির আর্দ্রতা অনুযায়ী নিয়ন্ত্রিত</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <span class="text-sm text-slate-400">
-                {% if pump_on %}চালু{% else %}বন্ধ{% endif %}
-            </span>
-            <div class="w-12 h-6 rounded-full
-                {% if pump_on %}bg-green-500{% else %}bg-slate-600{% endif %}
-                relative">
-                <div class="w-5 h-5 bg-white rounded-full absolute top-0.5
-                    {% if pump_on %}left-6.5{% else %}left-0.5{% endif %}
-                    transition-all"></div>
-            </div>
-        </div>
-    </div>
+<!-- পাম্প প্যানেল — HTMX অটো রিফ্রেশ -->
+<div id="pump-panel"
+     hx-get="{% url 'iot:pump_panel' %}"
+     hx-trigger="every 5s"
+     hx-swap="innerHTML"
+     class="mt-6">
+    {% include 'iot/partials/pump_panel.html' %}
 </div>
 
 {% endblock %}
