@@ -1,5 +1,10 @@
+from datetime import timedelta
+
 from django.test import TestCase
+from django.utils import timezone
+
 from .models import Node, SensorReading, Alert
+from .services import create_alert_once
 
 
 class NodeModelTest(TestCase):
@@ -259,3 +264,55 @@ class PumpPanelPartialTest(TestCase):
         Node.objects.create(node_id='esp32-01', name='নোড ১')
         response = self.client.get('/pump-panel/')
         self.assertTemplateUsed(response, 'iot/partials/pump_panel.html')
+
+
+class AlertCooldownTest(TestCase):
+    """Test the 30-minute cooldown on alert creation."""
+
+    def setUp(self):
+        self.node = Node.objects.create(
+            node_id='esp32-01', name='Test Node'
+        )
+
+    def test_alert_created_when_no_previous_alert(self):
+        create_alert_once(self.node, 'tank_low', 'Low tank', 'warning')
+        self.assertEqual(
+            Alert.objects.filter(alert_type='tank_low').count(), 1
+        )
+
+    def test_alert_not_duplicated_while_unresolved(self):
+        create_alert_once(self.node, 'tank_low', 'Low tank', 'warning')
+        create_alert_once(self.node, 'tank_low', 'Low again', 'warning')
+        self.assertEqual(
+            Alert.objects.filter(alert_type='tank_low').count(), 1
+        )
+
+    def test_alert_recreated_after_cooldown_expires(self):
+        create_alert_once(self.node, 'tank_low', 'Low tank', 'warning')
+        alert = Alert.objects.get(alert_type='tank_low')
+        alert.is_resolved = True
+        alert.resolved_at = timezone.now() - timedelta(minutes=31)
+        alert.save()
+        create_alert_once(self.node, 'tank_low', 'Low again', 'warning')
+        self.assertEqual(
+            Alert.objects.filter(alert_type='tank_low').count(), 2
+        )
+
+    def test_alert_skipped_within_cooldown(self):
+        create_alert_once(self.node, 'tank_low', 'Low tank', 'warning')
+        alert = Alert.objects.get(alert_type='tank_low')
+        alert.is_resolved = True
+        alert.resolved_at = timezone.now() - timedelta(minutes=5)
+        alert.save()
+        create_alert_once(self.node, 'tank_low', 'Low again', 'warning')
+        self.assertEqual(
+            Alert.objects.filter(alert_type='tank_low').count(), 1
+        )
+
+    def test_resolve_sets_resolved_at(self):
+        create_alert_once(self.node, 'tank_low', 'Low tank', 'warning')
+        alert = Alert.objects.get(alert_type='tank_low')
+        self.client.post(f'/alerts/{alert.id}/resolve/')
+        alert.refresh_from_db()
+        self.assertTrue(alert.is_resolved)
+        self.assertIsNotNone(alert.resolved_at)

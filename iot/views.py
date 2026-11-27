@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from .models import SensorReading, Node, DeviceControl, Alert
 from .services import (
@@ -86,5 +87,6 @@ def toggle_pump(request):
 def resolve_alert(request, alert_id):
     alert = get_object_or_404(Alert, id=alert_id)
     alert.is_resolved = True
+    alert.resolved_at = timezone.now()
     alert.save()
     return render(request, 'iot/partials/alerts_banner.html', build_context())

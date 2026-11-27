@@ -1,5 +1,11 @@
+from datetime import timedelta
+
+from django.utils import timezone
+
 from .models import Alert, SensorReading
 
+
+ALERT_COOLDOWN_MINUTES = 30
 
 TANK_LOW_THRESHOLD = 20
 TANK_CRITICAL_THRESHOLD = 10
@@ -14,11 +20,18 @@ def get_latest_value(sensor_type):
 
 
 def create_alert_once(node, alert_type, message, severity):
-    """একই টাইপের unresolved alert থাকলে নতুন তৈরি করে না"""
-    already_exists = Alert.objects.filter(
+    """একই টাইপের unresolved alert বা cooldown-এর ভিতরের resolved alert থাকলে নতুন তৈরি করে না"""
+    has_unresolved = Alert.objects.filter(
         node=node, alert_type=alert_type, is_resolved=False
     ).exists()
-    if not already_exists:
+    cooldown_start = timezone.now() - timedelta(minutes=ALERT_COOLDOWN_MINUTES)
+    has_recent_resolved = Alert.objects.filter(
+        node=node,
+        alert_type=alert_type,
+        resolved_at__isnull=False,
+        resolved_at__gt=cooldown_start,
+    ).exists()
+    if not has_unresolved and not has_recent_resolved:
         Alert.objects.create(
             node=node,
             alert_type=alert_type,

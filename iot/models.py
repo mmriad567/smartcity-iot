@@ -54,6 +54,7 @@ class Alert(models.Model):
     message = models.CharField(max_length=255)
     severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='info')
     is_resolved = models.BooleanField(default=False)
+    resolved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
