@@ -43,7 +43,14 @@ class Alert(models.Model):
         ('critical', 'Critical'),
     ]
 
+    ALERT_TYPE_CHOICES = [
+        ('tank_low', 'Tank Low'),
+        ('tank_critical', 'Tank Critical'),
+        ('bin_full', 'Bin Full'),
+    ]
+
     node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name='alerts')
+    alert_type = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES, blank=True)
     message = models.CharField(max_length=255)
     severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='info')
     is_resolved = models.BooleanField(default=False)

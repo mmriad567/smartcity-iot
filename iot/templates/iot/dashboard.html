@@ -4,7 +4,6 @@
 
 {% block content %}
 
-<!-- শীর্ষে শেষ আপডেট -->
 {% if last_updated %}
 <div class="flex justify-end mb-4">
     <span class="text-xs text-slate-500">
@@ -13,7 +12,15 @@
 </div>
 {% endif %}
 
-<!-- সেন্সর কার্ড — HTMX অটো রিফ্রেশ -->
+<!-- অ্যালার্ট ব্যানার — HTMX অটো রিফ্রেশ -->
+<div id="alerts-banner"
+     hx-get="{% url 'iot:alerts_banner' %}"
+     hx-trigger="every 5s"
+     hx-swap="innerHTML">
+    {% include 'iot/partials/alerts_banner.html' %}
+</div>
+
+<!-- সেন্সর কার্ড -->
 <div id="sensor-cards"
      hx-get="{% url 'iot:sensor_cards' %}"
      hx-trigger="every 5s"
@@ -21,7 +28,7 @@
     {% include 'iot/partials/sensor_cards.html' %}
 </div>
 
-<!-- পাম্প প্যানেল — HTMX অটো রিফ্রেশ -->
+<!-- পাম্প প্যানেল -->
 <div id="pump-panel"
      hx-get="{% url 'iot:pump_panel' %}"
      hx-trigger="every 5s"

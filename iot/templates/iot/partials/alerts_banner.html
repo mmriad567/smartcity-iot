@@ -1,0 +1,35 @@
+{% if active_alerts %}
+<div class="mb-6 space-y-2">
+
+    {% for alert in active_alerts %}
+    <div class="flex items-center justify-between px-4 py-3 rounded-lg
+        {% if alert.severity == 'critical' %}bg-red-500/20 border border-red-500/40
+        {% elif alert.severity == 'warning' %}bg-amber-500/20 border border-amber-500/40
+        {% else %}bg-blue-500/20 border border-blue-500/40{% endif %}">
+
+        <div class="flex items-center gap-3">
+            <span class="text-lg">
+                {% if alert.severity == 'critical' %}🚨
+                {% elif alert.severity == 'warning' %}⚠️
+                {% else %}ℹ️{% endif %}
+            </span>
+            <span class="
+                {% if alert.severity == 'critical' %}text-red-200
+                {% elif alert.severity == 'warning' %}text-amber-200
+                {% else %}text-blue-200{% endif %}">
+                {{ alert.message }}
+            </span>
+        </div>
+
+        <button
+            hx-post="{% url 'iot:resolve_alert' alert.id %}"
+            hx-target="#alerts-banner"
+            hx-swap="innerHTML"
+            class="text-xs px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200">
+            সমাধান
+        </button>
+    </div>
+    {% endfor %}
+
+</div>
+{% endif %}
