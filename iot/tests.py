@@ -359,3 +359,88 @@ class TogglePumpPublishesMqttTest(TestCase):
         response = self.client.post('/toggle-pump/', {'action': 'on'})
         # HTTP response must be 200 even if MQTT fails
         self.assertEqual(response.status_code, 200)
+
+
+class ToggleLightTest(TestCase):
+
+    def setUp(self):
+        self.node = Node.objects.create(
+            node_id='esp32-01', name='Test Node'
+        )
+        SensorReading.objects.create(
+            node=self.node, sensor_type='ldr', value=3000
+        )
+
+    @patch('iot.views.publish_command')
+    def test_toggle_light_on_sets_manual_and_publishes(self, mock_pub):
+        response = self.client.post('/toggle-light/', {'action': 'on'})
+        self.assertEqual(response.status_code, 200)
+        control = DeviceControl.objects.get(node=self.node)
+        self.assertTrue(control.light_on)
+        self.assertEqual(control.light_mode, 'manual')
+        mock_pub.assert_called_once_with({'light': 'on'})
+
+    @patch('iot.views.publish_command')
+    def test_toggle_light_off_sets_manual_and_publishes(self, mock_pub):
+        self.client.post('/toggle-light/', {'action': 'off'})
+        control = DeviceControl.objects.get(node=self.node)
+        self.assertFalse(control.light_on)
+        self.assertEqual(control.light_mode, 'manual')
+        mock_pub.assert_called_once_with({'light': 'off'})
+
+    @patch('iot.views.publish_command')
+    def test_toggle_light_auto_restores_auto_mode(self, mock_pub):
+        DeviceControl.objects.create(
+            node=self.node, light_mode='manual', light_on=True
+        )
+        self.client.post('/toggle-light/', {'action': 'auto'})
+        control = DeviceControl.objects.get(node=self.node)
+        self.assertEqual(control.light_mode, 'auto')
+        mock_pub.assert_called_once_with({'light': 'auto'})
+
+    @patch('iot.views.publish_command')
+    def test_toggle_light_invalid_action_returns_400(self, mock_pub):
+        response = self.client.post('/toggle-light/', {'action': 'garbage'})
+        self.assertEqual(response.status_code, 400)
+        mock_pub.assert_not_called()
+
+    def test_toggle_light_get_method_not_allowed(self):
+        response = self.client.get('/toggle-light/')
+        self.assertEqual(response.status_code, 405)
+
+
+class LightPanelPartialTest(TestCase):
+
+    def setUp(self):
+        Node.objects.create(node_id='esp32-01', name='Test Node')
+
+    def test_light_panel_returns_200(self):
+        response = self.client.get('/light-panel/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_light_panel_uses_correct_template(self):
+        response = self.client.get('/light-panel/')
+        self.assertTemplateUsed(response, 'iot/partials/light_panel.html')
+
+    def test_light_panel_shows_auto_when_mode_auto(self):
+        response = self.client.get('/light-panel/')
+        self.assertContains(response, 'AUTO')
+
+    def test_light_panel_shows_manual_when_mode_manual(self):
+        node = Node.objects.get(node_id='esp32-01')
+        DeviceControl.objects.create(
+            node=node, light_mode='manual', light_on=True
+        )
+        response = self.client.get('/light-panel/')
+        self.assertContains(response, 'MANUAL')
+
+
+class DashboardHasBothPanelsTest(TestCase):
+
+    def setUp(self):
+        Node.objects.create(node_id='esp32-01', name='Test Node')
+
+    def test_dashboard_contains_pump_and_light_panels(self):
+        response = self.client.get('/')
+        self.assertContains(response, 'id="pump-panel"')
+        self.assertContains(response, 'id="light-panel"')

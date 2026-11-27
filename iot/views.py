@@ -56,6 +56,10 @@ def pump_panel(request):
     return render(request, 'iot/partials/pump_panel.html', build_context())
 
 
+def light_panel(request):
+    return render(request, 'iot/partials/light_panel.html', build_context())
+
+
 def alerts_banner(request):
     return render(request, 'iot/partials/alerts_banner.html', build_context())
 
@@ -83,6 +87,31 @@ def toggle_pump(request):
     control.save()
     publish_command({"pump": action})
     return render(request, 'iot/partials/pump_panel.html', build_context())
+
+
+@require_POST
+def toggle_light(request):
+    node = get_node()
+    if not node:
+        return HttpResponse('No node available', status=404)
+
+    control, _ = DeviceControl.objects.get_or_create(node=node)
+    action = request.POST.get('action')
+
+    if action == 'on':
+        control.light_on = True
+        control.light_mode = 'manual'
+    elif action == 'off':
+        control.light_on = False
+        control.light_mode = 'manual'
+    elif action == 'auto':
+        control.light_mode = 'auto'
+    else:
+        return HttpResponse('Invalid action', status=400)
+
+    control.save()
+    publish_command({"light": action})
+    return render(request, 'iot/partials/light_panel.html', build_context())
 
 
 @require_POST

@@ -1,0 +1,81 @@
+<div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+
+    <div class="flex items-start justify-between mb-4">
+        <div>
+            <h2 class="text-lg font-semibold mb-1">💡 অটো লাইট</h2>
+            <p class="text-slate-400 text-sm">
+                {% if light_mode == 'auto' %}
+                    স্বয়ংক্রিয় · LDR {{ ldr_value }}
+                {% else %}
+                    ম্যানুয়াল নিয়ন্ত্রণ
+                {% endif %}
+            </p>
+        </div>
+        <span class="text-xs px-2 py-1 rounded
+            {% if light_mode == 'auto' %}bg-blue-500/20 text-blue-300
+            {% else %}bg-amber-500/20 text-amber-300{% endif %}">
+            {{ light_mode|upper }}
+        </span>
+    </div>
+
+    <!-- স্ট্যাটাস + টগল -->
+    <div class="flex items-center gap-4 mb-4">
+        <div class="w-12 h-6 rounded-full
+            {% if light_on %}bg-green-500{% else %}bg-slate-600{% endif %}
+            relative">
+            <div class="w-5 h-5 bg-white rounded-full absolute top-0.5
+                {% if light_on %}left-6.5{% else %}left-0.5{% endif %}
+                transition-all"></div>
+        </div>
+        <span class="text-lg font-semibold
+            {% if light_on %}text-green-400{% else %}text-slate-400{% endif %}">
+            {% if light_on %}জ্বলছে{% else %}নিভে আছে{% endif %}
+        </span>
+    </div>
+
+    <!-- কন্ট্রোল বাটন -->
+    <div class="flex flex-wrap gap-2">
+        <button
+            hx-post="{% url 'iot:toggle_light' %}"
+            hx-vals='{"action": "on"}'
+            hx-target="#light-panel"
+            hx-swap="innerHTML"
+            class="px-4 py-2 rounded-lg text-sm font-medium
+                {% if light_on and light_mode == 'manual' %}
+                    bg-green-500 text-white
+                {% else %}
+                    bg-slate-700 text-slate-200 hover:bg-slate-600
+                {% endif %}">
+            চালু করো
+        </button>
+
+        <button
+            hx-post="{% url 'iot:toggle_light' %}"
+            hx-vals='{"action": "off"}'
+            hx-target="#light-panel"
+            hx-swap="innerHTML"
+            class="px-4 py-2 rounded-lg text-sm font-medium
+                {% if not light_on and light_mode == 'manual' %}
+                    bg-red-500 text-white
+                {% else %}
+                    bg-slate-700 text-slate-200 hover:bg-slate-600
+                {% endif %}">
+            বন্ধ করো
+        </button>
+
+        <button
+            hx-post="{% url 'iot:toggle_light' %}"
+            hx-vals='{"action": "auto"}'
+            hx-target="#light-panel"
+            hx-swap="innerHTML"
+            class="px-4 py-2 rounded-lg text-sm font-medium
+                {% if light_mode == 'auto' %}
+                    bg-blue-500 text-white
+                {% else %}
+                    bg-slate-700 text-slate-200 hover:bg-slate-600
+                {% endif %}">
+            Auto মোড
+        </button>
+    </div>
+
+</div>
